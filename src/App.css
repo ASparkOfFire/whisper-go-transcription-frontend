@@ -1,0 +1,41 @@
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(109, 40, 217, 0.5);
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(109, 40, 217, 0.7);
+}
+
+@keyframes wave {
+  0% {
+    transform: scaleY(0.2);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+  100% {
+    transform: scaleY(0.2);
+  }
+}
+
+.token-list {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out;
+}
+
+.token-list.expanded {
+  max-height: 300px;
+  overflow-y: auto;
+}
