@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { TranscriptionResponse } from '../types';
+import { Play, Volume2, Loader } from 'lucide-react';
 
 interface TranscriptionDisplayProps {
   transcription: TranscriptionResponse | null;
@@ -10,6 +11,62 @@ const TranscriptionDisplay: React.FC<TranscriptionDisplayProps> = ({
   transcription, 
   transcriptionHistory 
 }) => {
+  // Reference to the hidden audio element
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState<number | null>(null);
+
+  // Function to play audio from an ArrayBuffer
+  const playAudio = (audioData?: ArrayBuffer, index?: number) => {
+    if (!audioData) {
+      console.warn('No audio data available to play');
+      return;
+    }
+
+    try {
+      setIsLoading(index ?? null);
+      
+      // Create a blob from the ArrayBuffer
+      const blob = new Blob([audioData], { type: 'audio/wav' });
+      
+      // Create a temporary URL for the blob
+      const audioUrl = URL.createObjectURL(blob);
+      
+      if (audioRef.current) {
+        // Set the audio source
+        audioRef.current.src = audioUrl;
+        
+        // Set up event handlers
+        audioRef.current.oncanplay = () => {
+          setIsLoading(null);
+          setIsPlaying(index ?? null);
+          audioRef.current?.play().catch(error => {
+            console.error('Error playing audio:', error);
+            setIsPlaying(null);
+          });
+        };
+        
+        // Clean up the URL when playback ends
+        audioRef.current.onended = () => {
+          URL.revokeObjectURL(audioUrl);
+          setIsPlaying(null);
+        };
+        
+        // Handle errors
+        audioRef.current.onerror = (e) => {
+          console.error('Audio playback error:', e);
+          URL.revokeObjectURL(audioUrl);
+          setIsPlaying(null);
+          setIsLoading(null);
+        };
+      }
+    } catch (error) {
+      console.error('Error creating audio blob:', error);
+      setIsPlaying(null);
+      setIsLoading(null);
+    }
+  };
+
   if (!transcription && transcriptionHistory.length === 0) {
     return (
       <div className="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-4 min-h-[100px] flex items-center justify-center">
@@ -22,6 +79,9 @@ const TranscriptionDisplay: React.FC<TranscriptionDisplayProps> = ({
 
   return (
     <div className="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-4">
+      {/* Hidden audio element for playback */}
+      <audio ref={audioRef} className="hidden" controls />
+
       {/* Current transcription */}
       {transcription && transcription.Text && (
         <div className="mb-6">
@@ -50,11 +110,35 @@ const TranscriptionDisplay: React.FC<TranscriptionDisplayProps> = ({
                   <span className="text-xs text-gray-500 dark:text-gray-400">
                     {item.timestamp || `Segment ${item.Num}`}
                   </span>
-                  {item.Tokens && (
-                    <span className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-full">
-                      {item.Tokens.length} tokens
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {item.audioData && (
+                      <button
+                        onClick={() => playAudio(item.audioData, index)}
+                        disabled={isPlaying !== null || isLoading !== null}
+                        className={`flex items-center text-xs text-white ${
+                          isPlaying === index 
+                            ? 'bg-blue-500 hover:bg-blue-600' 
+                            : isLoading === index
+                              ? 'bg-gray-400'
+                              : 'bg-green-500 hover:bg-green-600'
+                        } rounded-full w-6 h-6 justify-center transition-colors`}
+                        title={isPlaying === index ? "Playing audio..." : "Play audio"}
+                      >
+                        {isLoading === index ? (
+                          <Loader size={12} className="animate-spin" />
+                        ) : isPlaying === index ? (
+                          <Volume2 size={12} />
+                        ) : (
+                          <Play size={12} />
+                        )}
+                      </button>
+                    )}
+                    {item.Tokens && (
+                      <span className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-full">
+                        {item.Tokens.length} tokens
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <p className="text-gray-800 dark:text-gray-200">
                   {item.Text}

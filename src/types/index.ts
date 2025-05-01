@@ -13,4 +13,5 @@ export interface TranscriptionResponse {
   Text: string;
   Tokens: Token[];
   timestamp?: string;
+  audioData?: ArrayBuffer;
 }

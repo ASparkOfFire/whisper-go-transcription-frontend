@@ -1,9 +1,9 @@
 import React from 'react';
-import { Wifi, WifiOff, Mic, MicOff, AlertCircle } from 'lucide-react';
+import { Wifi, WifiOff, Mic, MicOff, AlertCircle, Ear } from 'lucide-react';
 
 type StatusType = 'connection' | 'recording';
 type ConnectionStatus = 'connecting' | 'connected' | 'disconnected';
-type RecordingStatus = 'preparing' | 'recording' | 'inactive' | 'error';
+type RecordingStatus = 'preparing' | 'listening' | 'recording' | 'inactive' | 'error';
 
 interface StatusIndicatorProps {
   status: ConnectionStatus | RecordingStatus;
@@ -40,9 +40,14 @@ const StatusIndicator: React.FC<StatusIndicatorProps> = ({ status, type = 'conne
   } else {
     switch (status as RecordingStatus) {
       case 'recording':
-        icon = <Mic size={16} />;
+        icon = <Mic size={16} className="animate-pulse" />;
         label = 'Recording';
         colorClass = 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
+        break;
+      case 'listening':
+        icon = <Mic size={16} />;
+        label = 'Listening';
+        colorClass = 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
         break;
       case 'preparing':
         icon = <Mic size={16} className="animate-pulse" />;

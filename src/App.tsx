@@ -12,10 +12,12 @@ function App() {
   const [isRecording, setIsRecording] = useState(false);
   const [connectionTime, setConnectionTime] = useState<string | null>(null);
   const [transcriptionHistory, setTranscriptionHistory] = useState<TranscriptionResponse[]>([]);
+  const [lastAudioChunk, setLastAudioChunk] = useState<ArrayBuffer | undefined>(undefined);
   const { connectionStatus, latestTranscription, sendAudioChunk, error, resetError, forceReconnect } = useWebSocket();
   const { startRecording, stopRecording, recordingStatus, audioData } = useAudioRecorder({
     onAudioChunk: (chunk) => {
       if (connectionStatus === 'connected') {
+        setLastAudioChunk(chunk);
         sendAudioChunk(chunk);
       }
     }
@@ -43,21 +45,22 @@ function App() {
           return prevHistory;
         }
         
-        // Add timestamp to the transcription
-        const transcriptionWithTime = {
+        // Add timestamp and audio data to the transcription
+        const transcriptionWithTimeAndAudio: TranscriptionResponse = {
           ...latestTranscription,
-          timestamp: new Date().toLocaleTimeString()
+          timestamp: new Date().toLocaleTimeString(),
+          audioData: lastAudioChunk
         };
         
         // Keep the most recent 10 transcriptions (adjust number as needed)
-        const newHistory = [...prevHistory, transcriptionWithTime];
+        const newHistory = [...prevHistory, transcriptionWithTimeAndAudio];
         if (newHistory.length > 10) {
           return newHistory.slice(newHistory.length - 10);
         }
         return newHistory;
       });
     }
-  }, [latestTranscription]);
+  }, [latestTranscription, lastAudioChunk]);
 
   const toggleRecording = () => {
     if (isRecording) {
@@ -144,7 +147,20 @@ function App() {
 
           <div className="relative min-h-[200px] mb-6 flex items-center justify-center border border-gray-200 dark:border-gray-700 rounded-lg p-4">
             {isRecording ? (
-              <WaveformVisualizer audioData={audioData} />
+              <>
+                <WaveformVisualizer audioData={audioData} />
+                {recordingStatus === 'listening' && (
+                  <div className="absolute top-2 left-2 p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400 rounded text-xs">
+                    Listening for speech...
+                  </div>
+                )}
+                {recordingStatus === 'recording' && (
+                  <div className="absolute top-2 left-2 p-2 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400 rounded text-xs flex items-center">
+                    <span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-2 animate-pulse"></span>
+                    Recording speech
+                  </div>
+                )}
+              </>
             ) : (
               <div className="text-center text-gray-500 dark:text-gray-400">
                 {connectionStatus === 'connected' ? (
@@ -184,7 +200,9 @@ function App() {
               disabled={isDisabled}
               className={`flex items-center justify-center w-16 h-16 rounded-full shadow-lg transition-all ${
                 isRecording
-                  ? 'bg-red-500 hover:bg-red-600'
+                  ? recordingStatus === 'recording'
+                    ? 'bg-red-500 hover:bg-red-600'
+                    : 'bg-blue-500 hover:bg-blue-600'
                   : 'bg-purple-600 hover:bg-purple-700'
               } ${
                 isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
@@ -194,7 +212,11 @@ function App() {
               {isConnecting ? (
                 <Loader2 className="animate-spin text-white" size={28} />
               ) : isRecording ? (
-                <MicOff className="text-white" size={28} />
+                recordingStatus === 'recording' ? (
+                  <Mic className="text-white animate-pulse" size={28} />
+                ) : (
+                  <Mic className="text-white opacity-70" size={28} />
+                )
               ) : (
                 <Mic className="text-white" size={28} />
               )}

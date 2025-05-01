@@ -44,7 +44,7 @@ export const useWebSocket = (): UseWebSocketReturn => {
       return;
     }
     
-    const states = {
+    const states: Record<number, string> = {
       0: 'CONNECTING',
       1: 'OPEN',
       2: 'CLOSING',
@@ -182,6 +182,15 @@ export const useWebSocket = (): UseWebSocketReturn => {
           
           if (data.err) {
             console.error('WebSocket: Server error:', data.err);
+            
+            // Handle invalid WAV file errors without updating UI
+            if (data.code === 500 && data.err === "Transcription failed" && 
+                (data.data === "invalid WAV file" || data.data?.includes("invalid WAV"))) {
+              console.error('WebSocket: Invalid WAV file error - not displaying in UI');
+              return; // Skip showing this error in the UI
+            }
+            
+            // Display other errors in the UI
             setError(`Server error: ${data.err}`);
           } else {
             setLatestTranscription(data);
